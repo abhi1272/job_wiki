@@ -26,6 +26,7 @@ Welcome to your offline personal knowledge base. This wiki acts as the single so
 - [Node.js Event Loop & Scaling](./2_Interview_Prep/Node_Event_Loop.md) — Event loop phases, clustering, worker threads.
 - [RAG Pipeline Deep Dive](./2_Interview_Prep/RAG_Pipeline_Deep_Dive.md) — Chunking strategies, vector embeddings, evaluations.
 - [Multi-Agent Orchestration](./2_Interview_Prep/Multi_Agent_Orchestration.md) — Router, conversational, hierarchical agent patterns.
+- [Advanced Software Architecture and Development Study Guide](./2_Interview_Prep/Advanced_Software_Architecture_and_Development_Study_Guide.md) — Short-answer quiz, answer key, essay prompts, and glossary.
 - [Behavioural Stories (STAR Format)](./2_Interview_Prep/Behavioural_Stories.md) — 5 stories covering Concentrix, ConnectWise, Niyuj, Barclays, Infosys.
 - [Leadership & Team Management](./2_Interview_Prep/Leadership_Questions.md) — Conflict resolution, mentoring, task delegation.
 - [Why Leaving / Why This Role](./2_Interview_Prep/Why_Leaving.md) — Contextual reason for transition.
