@@ -833,3 +833,264 @@ const deployAgent = withAuditLog(async (config) => { /* logic */ }, 'deployAgent
 Use CLASS  → NestJS (DI requires it), inheritance needed, multiple stateful instances
 Use FUNCTION → Node.js services, utilities, closures for private state, simpler testing
 ```
+
+---
+
+## 10. Intermediate-Level Q&A (4–7 Years Experience)
+
+> These questions sound simple but interviewers use them to expose gaps. Read these before any technical screen.
+
+---
+
+### Q1 — Hoisting & Temporal Dead Zone
+
+**Q: What is hoisting? How do var, let, and const differ?**
+
+`var` declarations are hoisted to the top of their function scope and initialized to `undefined`. `let` and `const` are hoisted to the block scope but NOT initialized — accessing them before the declaration throws a `ReferenceError`. The gap between the start of the block and the declaration line is the **Temporal Dead Zone (TDZ)**.
+
+```javascript
+console.log(a); // undefined — var hoisted + initialized
+console.log(b); // ReferenceError — TDZ for let
+var a = 1;
+let b = 2;
+
+// Function declarations are fully hoisted (name + body)
+greet(); // works
+function greet() { console.log('hello'); }
+
+// Function expressions are NOT fully hoisted
+sayHi(); // TypeError: sayHi is not a function
+var sayHi = function() { console.log('hi'); };
+// var sayHi is hoisted as undefined, calling undefined() throws
+```
+
+**Interview answer:**
+> "`var` is hoisted and initialized to `undefined` — you can reference it before the line, it just returns undefined. `let` and `const` are also hoisted but not initialized, so accessing them before declaration throws a ReferenceError — that window is the Temporal Dead Zone. Function declarations are fully hoisted including their body; function expressions are not."
+
+---
+
+### Q2 — Destructuring & Spread/Rest
+
+**Q: Walk me through destructuring with defaults. What's the difference between spread and rest?**
+
+```javascript
+// Array destructuring with defaults and skipping
+const [a, , b = 10] = [1, 2];  // a=1, skip index 1, b=10 (default)
+
+// Object destructuring with rename and default
+const { name: userName = 'Guest', age = 0 } = { name: 'Abhishek' };
+// userName = 'Abhishek', age = 0 (field doesn't exist)
+
+// Nested destructuring
+const { address: { city } } = { address: { city: 'Mumbai' } };
+
+// REST — collects remaining items
+function sum(first, ...rest) {  // rest = array of remaining args
+  return rest.reduce((acc, n) => acc + n, first);
+}
+sum(1, 2, 3, 4); // 10
+
+// SPREAD — expands into individual items
+const arr1 = [1, 2], arr2 = [3, 4];
+const merged = [...arr1, ...arr2]; // [1, 2, 3, 4]
+
+// Spread for shallow copy (common bug)
+const original = { a: 1, nested: { b: 2 } };
+const copy = { ...original };
+copy.nested.b = 99; // mutates original.nested.b too — shallow copy only
+```
+
+**Interview answer:**
+> "Destructuring lets you extract values from arrays/objects with rename and default support. Rest collects remaining elements into an array — it's a parameter that must come last. Spread expands an iterable in-place — useful for merging, copying, and passing arrays as function arguments. Key gotcha: spread is a SHALLOW copy — nested objects are still shared references."
+
+---
+
+### Q3 — Array Methods: map, filter, reduce
+
+**Q: Explain map, filter, and reduce with a real example. What's the difference between map and forEach?**
+
+```javascript
+const orders = [
+  { id: 1, status: 'paid',    amount: 100, category: 'food' },
+  { id: 2, status: 'pending', amount: 200, category: 'tech' },
+  { id: 3, status: 'paid',    amount: 150, category: 'food' },
+];
+
+// filter — returns matching items (same structure, subset)
+const paid = orders.filter(o => o.status === 'paid');
+// [{ id:1 ... }, { id:3 ... }]
+
+// map — transforms every item (same length, different shape)
+const amounts = orders.map(o => o.amount);
+// [100, 200, 150]
+
+// reduce — collapse to a single value
+const total = orders.reduce((sum, o) => sum + o.amount, 0);
+// 450
+
+// Combine: sum of paid food orders
+const paidFoodTotal = orders
+  .filter(o => o.status === 'paid' && o.category === 'food')
+  .reduce((sum, o) => sum + o.amount, 0);
+// 250
+
+// map vs forEach
+// map returns a NEW array — use when you need the result
+// forEach returns undefined — use for side effects only
+const doubled = orders.map(o => o.amount * 2); // new array
+orders.forEach(o => console.log(o.id));         // side effect, returns undefined
+```
+
+**Interview answer:**
+> "`filter` keeps items that pass a predicate — same structure, fewer items. `map` transforms every item — same count, different shape. `reduce` collapses the whole array to a single value — most flexible but reads less clearly, so I use filter+map when possible. `map` vs `forEach`: map returns a new array; forEach returns undefined and is for side effects only — assigning forEach's result is a common bug."
+
+---
+
+### Q4 — Optional Chaining & Nullish Coalescing
+
+**Q: What do `?.` and `??` solve? When would `??` behave differently from `||`?**
+
+```javascript
+// Problem: TypeError: Cannot read property of undefined
+const city = user.address.city; // throws if address is null/undefined
+
+// ✅ Optional chaining — short-circuits to undefined instead of throwing
+const city = user?.address?.city;          // undefined if any link is null/undefined
+const firstTag = post?.tags?.[0];         // works with arrays
+const result = obj?.method?.();           // works with function calls
+
+// Problem with || — treats 0, '', false as falsy → uses fallback unintentionally
+const count = user.count || 10; // user.count = 0 → returns 10 (wrong!)
+
+// ✅ Nullish coalescing — only null/undefined triggers fallback
+const count = user.count ?? 10; // 0 → returns 0 ✅
+const name  = user.name ?? 'Guest'; // '' (empty string) → returns '' ✅
+
+// Real MERN example — agent config with safe defaults
+const maxTokens = agent?.config?.maxTokens ?? 1000;
+const providers = agent?.enabledProviders ?? ['anthropic'];
+```
+
+| Operator | Falsy values that trigger fallback |
+|---|---|
+| `\|\|` | `null, undefined, 0, '', false, NaN` |
+| `??` | `null, undefined` only |
+
+**Interview answer:**
+> "Optional chaining short-circuits to `undefined` instead of throwing when a chain link is null or undefined — essential when working with API responses where fields may be absent. Nullish coalescing `??` provides a default only for null/undefined, unlike `||` which also replaces `0`, empty string, and `false`. In practice I always use `??` for defaults on numeric and boolean config values."
+
+---
+
+### Q5 — `typeof`, `instanceof`, and `==` vs `===`
+
+**Q: What does typeof null return and why? When does `==` cause bugs?**
+
+```javascript
+// typeof quirks
+typeof null        // 'object' — historical bug in JS, never fixed (backward compat)
+typeof undefined   // 'undefined'
+typeof []          // 'object' — arrays are objects
+typeof function(){} // 'function' — only callable objects get this
+typeof NaN         // 'number' — Not a Number is typed as number
+
+// Correct type checks
+Array.isArray([])  // true — use this not typeof
+Number.isNaN(NaN)  // true — use this not isNaN() (isNaN('') = true, wrong)
+
+// instanceof — checks prototype chain
+[] instanceof Array   // true
+[] instanceof Object  // true (Array.prototype.__proto__ === Object.prototype)
+
+// == coercion traps
+null == undefined   // true — they equal each other
+null == 0           // false
+'' == false         // true — both coerced to 0
+[] == false         // true — [] → 0, false → 0
+[] == ![]           // true (this one breaks everyone's brain)
+
+// Use === always except one legitimate use case:
+// null == undefined covers both in one check:
+if (value == null) // true for both null and undefined — intentional use of ==
+```
+
+**Interview answer:**
+> "`typeof null` returns `'object'` — a legacy bug from 1995 that can't be fixed without breaking the web. For arrays use `Array.isArray`. For NaN use `Number.isNaN` — `typeof NaN` is `'number'`. Use `===` always; `==` coerces types in non-obvious ways — empty string and false both become 0 and compare equal. The one legitimate use: `value == null` checks for both null and undefined in one expression."
+
+---
+
+### Q6 — `Object` Utility Methods
+
+**Q: How do you merge objects, clone them, and iterate over their keys?**
+
+```javascript
+const defaults = { model: 'claude-3', maxTokens: 1000, temperature: 0.7 };
+const overrides = { maxTokens: 2000, stream: true };
+
+// Merge (right wins)
+const config = { ...defaults, ...overrides };
+// { model: 'claude-3', maxTokens: 2000, temperature: 0.7, stream: true }
+
+// Object.assign — same as spread, mutates first arg
+Object.assign({}, defaults, overrides);
+
+// Iterate
+Object.keys(config)    // ['model', 'maxTokens', 'temperature', 'stream']
+Object.values(config)  // ['claude-3', 2000, 0.7, true]
+Object.entries(config) // [['model', 'claude-3'], ['maxTokens', 2000], ...]
+
+// Transform
+const redacted = Object.fromEntries(
+  Object.entries(config).filter(([k]) => k !== 'apiKey')
+);
+
+// Freeze — prevents mutation (use for config objects)
+const LIMITS = Object.freeze({ maxFileSize: 500, maxAgents: 10 });
+LIMITS.maxAgents = 999; // silently fails (TypeError in strict mode)
+
+// Check own property (safe vs hasOwnProperty)
+Object.hasOwn(config, 'model') // true — recommended over config.hasOwnProperty()
+// hasOwnProperty can be overridden; Object.hasOwn cannot
+```
+
+**Interview answer:**
+> "For merging I use spread `{ ...a, ...b }` — right-most value wins, clean and readable. `Object.entries` gives `[key, value]` pairs making it easy to filter or transform with array methods. `Object.freeze` prevents mutation — useful for shared config constants. `Object.hasOwn` is safer than `hasOwnProperty` because it can't be shadowed by a property named `hasOwnProperty`."
+
+---
+
+### Q7 — Short-Circuit Evaluation & Common Gotchas
+
+**Q: What is short-circuit evaluation? What are common bugs with it in React?**
+
+```javascript
+// AND (&&) — returns first falsy OR last truthy
+true && 'hello'   // 'hello'
+false && 'hello'  // false
+null && doWork()  // null — doWork never called
+
+// OR (||) — returns first truthy OR last falsy
+null || 'default'  // 'default'
+'value' || 'default' // 'value'
+
+// ❌ React rendering bug with 0
+const count = 0;
+return <div>{count && <Component />}</div>;
+// Renders: <div>0</div> — not nothing! 0 is falsy but is a valid React child
+
+// ✅ Fix — coerce to boolean
+return <div>{count > 0 && <Component />}</div>;
+return <div>{!!count && <Component />}</div>;
+return <div>{Boolean(count) && <Component />}</div>;
+
+// ❌ Another gotcha — false string
+const show = 'false'; // string, not boolean
+show && <Component />  // renders! 'false' is truthy
+
+// Comma operator (rare but seen in minified code)
+const x = (1, 2, 3); // x = 3 — evaluates all, returns last
+
+// Optional chaining with short-circuit
+const log = config?.debug && console.log; // null if no config
+```
+
+**Interview answer:**
+> "Short-circuit evaluation means `&&` stops at the first falsy value and `||` stops at the first truthy. The classic React bug: `{count && <Component />}` renders a literal `0` when count is zero because 0 is falsy but React renders numbers — fix with `count > 0 &&`. Similarly, `||` for defaults replaces `0` and empty string — use `??` instead for those cases."

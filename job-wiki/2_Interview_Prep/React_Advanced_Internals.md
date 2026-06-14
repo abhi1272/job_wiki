@@ -447,6 +447,351 @@ useEffect(() => { fetchData() }, []) // should be [url]
 
 ---
 
-## What's Next
+---
 
-- [ ] React 18 — Suspense, lazy loading, streaming SSR
+## 6. Intermediate-Level Q&A (4–7 Years Experience)
+
+> These questions come up as warmups even in principal-level interviews. Easy to blank on under pressure.
+
+---
+
+### Q1 — useEffect Dependency Array Rules
+
+**Q: What are the rules for the useEffect dependency array? What happens if you get it wrong?**
+
+```javascript
+// Rule: every reactive value used inside useEffect must be in the dependency array
+// Reactive = state, props, context, anything derived from them
+
+// ❌ Missing dependency — stale closure
+function Component({ userId }) {
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    fetchUser(userId).then(setData); // userId used but not in deps
+  }, []); // only runs on mount — ignores userId changes
+}
+
+// ✅ Correct — re-runs when userId changes
+useEffect(() => {
+  fetchUser(userId).then(setData);
+}, [userId]);
+
+// Cleanup runs BEFORE next effect, and on unmount
+useEffect(() => {
+  const sub = subscribe(userId);
+  return () => sub.unsubscribe(); // runs when userId changes before re-subscribing
+}, [userId]);
+
+// Stable references don't need to be in deps
+const fetchUser = useCallback((id) => api.get(id), []); // stable
+useEffect(() => { fetchUser(userId); }, [userId, fetchUser]); // fetchUser won't retrigger
+
+// Common gotcha — object/array in deps
+useEffect(() => { ... }, [{ id: userId }]); // ❌ new object every render = infinite loop
+useEffect(() => { ... }, [userId]);         // ✅ primitive value — stable comparison
+```
+
+**The 3 things useEffect cleanup does:**
+```
+1. Runs when component unmounts
+2. Runs when deps change (before next effect fires)
+3. Does NOT run after every render — only when deps change
+```
+
+**Interview answer:**
+> "Every value used inside useEffect that comes from render scope must be in the dependency array — state, props, or values derived from them. Missing a dep causes a stale closure where the effect reads an old value forever. Objects and arrays in deps cause infinite loops because they produce a new reference every render — use primitives. Cleanup runs on unmount AND before the next effect when deps change."
+
+---
+
+### Q2 — Key Prop: When It Remounts vs Updates
+
+**Q: What does the key prop actually do? When does it cause a full remount?**
+
+```jsx
+// React uses key to identify elements between renders
+// Same key = same element → UPDATE (preserve state)
+// Different key = different element → DESTROY + REMOUNT (reset state)
+
+// ❌ Index as key — problem when list changes
+const list = ['a', 'b', 'c'];
+list.map((item, i) => <Input key={i} defaultValue={item} />);
+// Remove 'a' → ['b', 'c']
+// key 0 still exists → React thinks it's the SAME Input → keeps 'a' value → bug
+
+// ✅ Stable ID as key
+list.map(item => <Input key={item.id} defaultValue={item.value} />);
+
+// POWER MOVE — intentional remount to reset state
+// Problem: same component, different user → old state bleeds into new user
+<UserProfile userId={userId} />
+// If UserProfile uses internal state, switching userId doesn't reset it
+
+// ✅ Force remount by changing key — resets all state and effects
+<UserProfile key={userId} userId={userId} />
+// React destroys old instance and creates fresh one when userId changes
+// This is cleaner than useEffect + manual reset in most cases
+
+// Animations — key change triggers exit + enter animation
+<AnimatedModal key={modalId} />
+```
+
+**Interview answer:**
+> "Key is React's identity for elements across renders. Same key = update existing element, keep state. Different key = destroy and remount fresh. Index as key breaks when items are added/removed because indices shift — React gets confused about which element is which. The power use: force a full remount by changing key — when you need a component to fully reset when a prop changes, adding that prop as key is cleaner than manually resetting state in useEffect."
+
+---
+
+### Q3 — React 18 Automatic Batching
+
+**Q: How does React 18 batch state updates differently from React 17?**
+
+```javascript
+// React 17 — batching only inside React event handlers
+function handleClick() {
+  setA(1); // } batched — one render
+  setB(2); // }
+}
+
+// React 17 — NOT batched outside React handlers
+setTimeout(() => {
+  setA(1); // render 1
+  setB(2); // render 2 — two renders!
+}, 1000);
+
+// React 18 — automatic batching EVERYWHERE
+setTimeout(() => {
+  setA(1); // } batched — one render
+  setB(2); // }
+}, 1000);
+
+fetch('/api').then(() => {
+  setA(1); // } batched in React 18
+  setB(2); // }
+});
+
+// Opt out of batching when you need intermediate renders
+import { flushSync } from 'react-dom';
+
+flushSync(() => setA(1)); // forces render immediately
+flushSync(() => setB(2)); // forces another render — use sparingly
+```
+
+**Why batching matters:**
+```
+Without: 2 state updates = 2 renders = 2 DOM operations
+With:    2 state updates = 1 render = 1 DOM operation
+React 18 brings this consistency to async code for free
+```
+
+**Interview answer:**
+> "React 17 batched state updates only inside React event handlers — setTimeout and Promises triggered separate renders per setState call. React 18 adds automatic batching everywhere: inside setTimeout, fetch callbacks, native event listeners — all updates in the same call stack collapse into one render. You can opt out with `flushSync` when you need an immediate DOM update, but that's rare."
+
+---
+
+### Q4 — useRef vs createRef
+
+**Q: When do you use useRef vs createRef? What are the common use cases?**
+
+```javascript
+// createRef — creates a new ref object on every render (designed for class components)
+function BadComponent() {
+  const inputRef = createRef(); // new ref every render — previous DOM ref lost
+  return <input ref={inputRef} />;
+}
+
+// useRef — same ref object across renders (correct for function components)
+function GoodComponent() {
+  const inputRef = useRef(null); // stable ref — persists for component lifetime
+  
+  const focusInput = () => inputRef.current?.focus();
+  
+  return <input ref={inputRef} />;
+}
+
+// Use cases:
+// 1. DOM access
+const canvasRef = useRef(null);
+useEffect(() => {
+  const ctx = canvasRef.current.getContext('2d');
+  // draw...
+}, []);
+return <canvas ref={canvasRef} />;
+
+// 2. Mutable value that doesn't trigger re-render
+const renderCount = useRef(0);
+useEffect(() => { renderCount.current++; }); // never causes re-render
+
+// 3. Previous value tracking
+function usePrevious(value) {
+  const ref = useRef();
+  useEffect(() => { ref.current = value; }); // update AFTER render
+  return ref.current; // returns value from BEFORE this render
+}
+
+// 4. Avoiding stale closure (from Section 2)
+const latestCallback = useRef(callback);
+useEffect(() => { latestCallback.current = callback; });
+// interval can call latestCallback.current — always fresh, stable ref
+```
+
+**Interview answer:**
+> "`createRef` creates a new ref each render — use it in class components only. `useRef` returns the same object across renders — the correct choice in function components. The two use cases: accessing DOM nodes directly, and storing mutable values that shouldn't trigger re-renders (render counters, previous values, interval IDs). Changing `ref.current` never causes a re-render — that's the distinction from state."
+
+---
+
+### Q5 — Controlled Forms: Correct Pattern
+
+**Q: How do you handle a form with multiple fields in React?**
+
+```jsx
+// ❌ One useState per field — verbose and doesn't scale
+const [name, setName] = useState('');
+const [email, setEmail] = useState('');
+const [password, setPassword] = useState('');
+
+// ✅ Single state object — scales to any number of fields
+function LoginForm({ onSubmit }) {
+  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value })); // [name] = computed property
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' })); // clear error on type
+  };
+
+  const validate = () => {
+    const newErrors = {};
+    if (!form.email.includes('@')) newErrors.email = 'Invalid email';
+    if (form.password.length < 8) newErrors.password = 'Min 8 chars';
+    return newErrors;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length) {
+      setErrors(validationErrors);
+      return;
+    }
+    setLoading(true);
+    try { await onSubmit(form); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input name="email" value={form.email} onChange={handleChange} />
+      {errors.email && <span>{errors.email}</span>}
+      <input name="password" type="password" value={form.password} onChange={handleChange} />
+      {errors.password && <span>{errors.password}</span>}
+      <button type="submit" disabled={loading}>
+        {loading ? 'Submitting...' : 'Submit'}
+      </button>
+    </form>
+  );
+}
+```
+
+**Interview answer:**
+> "I use a single state object for all fields with a generic `handleChange` that uses `e.target.name` as the key — computed property `[name]`. This scales to any number of fields with one handler. `e.preventDefault()` stops the browser's native form submission. For validation I run it on submit and attach errors to a separate errors object rendered next to each field. For real forms I'd reach for React Hook Form to avoid re-rendering on every keystroke."
+
+---
+
+### Q6 — Children Prop & Component Composition
+
+**Q: How does the children prop work? When do you use it over passing components as regular props?**
+
+```jsx
+// children — whatever you put between open and close tags
+function Card({ title, children }) {
+  return (
+    <div className="card">
+      <h2>{title}</h2>
+      <div className="content">{children}</div>
+    </div>
+  );
+}
+
+<Card title="Profile">
+  <Avatar src={user.avatar} />   {/* children can be anything */}
+  <p>{user.bio}</p>
+</Card>
+
+// Multiple named slots — component as prop pattern
+function Layout({ header, sidebar, children }) {
+  return (
+    <div className="layout">
+      <header>{header}</header>
+      <aside>{sidebar}</aside>
+      <main>{children}</main>
+    </div>
+  );
+}
+
+<Layout
+  header={<NavBar user={user} />}
+  sidebar={<FilterPanel filters={filters} />}
+>
+  <ProductGrid items={items} />
+</Layout>
+
+// Inspecting children
+React.Children.count(children)    // count
+React.Children.map(children, child => React.cloneElement(child, { extraProp: true }))
+// cloneElement lets you inject props into children — used in compound components
+
+// children as function (render prop pattern)
+function Toggle({ children }) {
+  const [on, setOn] = useState(false);
+  return children({ on, toggle: () => setOn(o => !o) });
+}
+
+<Toggle>
+  {({ on, toggle }) => <button onClick={toggle}>{on ? 'ON' : 'OFF'}</button>}
+</Toggle>
+```
+
+**Interview answer:**
+> "`children` is what renders between the component's tags — it's just a prop that can be JSX, strings, arrays, or functions. I prefer it over a `content` prop for complex markup because it reads like HTML and doesn't need to be serialized. For multiple named slots I pass components as regular props — `header`, `sidebar`, `footer`. Children as a function (render props) lets the parent share state with children without lifting it — useful when you control the state logic but need the consumer to control the rendering."
+
+---
+
+### Q7 — useState: Functional Updates & Initialization
+
+**Q: When must you use the functional form of setState? What is lazy initialization?**
+
+```javascript
+// ❌ Stale state in closures — common bug with fast updates
+const [count, setCount] = useState(0);
+const handleClick = () => {
+  setCount(count + 1); // closes over count at render time
+  setCount(count + 1); // both use the same stale count → only +1 total
+};
+
+// ✅ Functional update — receives guaranteed latest state
+const handleClick = () => {
+  setCount(prev => prev + 1); // prev is always current
+  setCount(prev => prev + 1); // count goes up by 2
+};
+
+// Required: whenever new state depends on old state
+// And always inside setTimeout, setInterval, event handlers that close over state
+
+// Lazy initialization — runs once on mount, avoids expensive ops on every render
+// ❌ JSON.parse runs on every render
+const [data, setData] = useState(JSON.parse(localStorage.getItem('data') || '{}'));
+
+// ✅ Function form — only runs on first render
+const [data, setData] = useState(() => JSON.parse(localStorage.getItem('data') || '{}'));
+
+// Object state — always spread to avoid losing other fields
+const [user, setUser] = useState({ name: '', email: '', role: 'viewer' });
+
+setUser({ name: 'Abhishek' }); // ❌ loses email and role!
+setUser(prev => ({ ...prev, name: 'Abhishek' })); // ✅ keeps other fields
+```
+
+**Interview answer:**
+> "Use the functional form `setState(prev => ...)` whenever the new state depends on the old value — especially in event handlers, timeouts, and intervals where the closure captures stale state. Multiple updates in one handler need functional form to queue correctly. Lazy initialization: passing a function to `useState(fn)` instead of a value means the initializer runs only once on mount — important for expensive operations like parsing localStorage or computing from large datasets."

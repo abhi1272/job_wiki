@@ -13,23 +13,47 @@ Welcome to your offline personal knowledge base. This wiki acts as the single so
 - [Cover Letter Templates](./1_Resume_Hub/Cover_Letters.md) — Personalized for Principal/Staff, Full-Stack, and Cloud Platform roles.
 
 ### 🎯 [Section 2: Interview Prep](./2_Interview_Prep/)
-- [Complete Interview Q&A](./2_Interview_Prep/Complete_Interview_QA.md) — 📋 Comprehensive questions and answers.
-- [Tell Me About Yourself](./2_Interview_Prep/Tell_Me_About_Yourself.md) — 60-second high-impact introductory script.
-- [System Design: GCP Full-Stack Platform](./2_Interview_Prep/System_Design_GCP.md) — Enterprise multi-tenant SaaS architecture.
-- [AI Gateway Deep Dive](./2_Interview_Prep/AI_Gateway_Deep_Dive.md) — Observability, rate-limiting, safety routing.
-- [Agent Builder Deep Dive](./2_Interview_Prep/Agent_Builder_Deep_Dive.md) — Multi-agent orchestration, RAG, tool-use details.
-- [Kubernetes Internals](./2_Interview_Prep/Kubernetes_Internals.md) — Pod lifecycle, services, HPA, probes, crash loops.
-- [Microservices Patterns](./2_Interview_Prep/Microservices_Patterns.md) — API Gateways, circuit breakers, service mesh, Saga.
-- [MySQL at Scale](./2_Interview_Prep/MySQL_At_Scale.md) — Replicas, ProxySQL load balancing, indexing, N+1, ACID.
-- [CI/CD Pipeline Flow](./2_Interview_Prep/CI_CD_Pipeline.md) — GitLab flow, zero-downtime deployment, rollback rules.
-- [React Hooks & Performance](./2_Interview_Prep/React_Hooks_Performance.md) — useMemo, useCallback, reconciliation, React 18.
-- [Node.js Event Loop & Scaling](./2_Interview_Prep/Node_Event_Loop.md) — Event loop phases, clustering, worker threads.
-- [RAG Pipeline Deep Dive](./2_Interview_Prep/RAG_Pipeline_Deep_Dive.md) — Chunking strategies, vector embeddings, evaluations.
-- [Multi-Agent Orchestration](./2_Interview_Prep/Multi_Agent_Orchestration.md) — Router, conversational, hierarchical agent patterns.
-- [Advanced Software Architecture and Development Study Guide](./2_Interview_Prep/Advanced_Software_Architecture_and_Development_Study_Guide.md) — Short-answer quiz, answer key, essay prompts, and glossary.
-- [Behavioural Stories (STAR Format)](./2_Interview_Prep/Behavioural_Stories.md) — 5 stories covering Concentrix, ConnectWise, Niyuj, Barclays, Infosys.
-- [Leadership & Team Management](./2_Interview_Prep/Leadership_Questions.md) — Conflict resolution, mentoring, task delegation.
-- [Why Leaving / Why This Role](./2_Interview_Prep/Why_Leaving.md) — Contextual reason for transition.
+
+> 🗂️ **[MERN Interview Master Index](./2_Interview_Prep/MERN_Interview_Master_Index.md)** — Start here. All topics categorized with quick study plans by interview type.
+
+#### 🟡 A — Behavioural & Soft Skills
+- [Tell Me About Yourself](./2_Interview_Prep/Tell_Me_About_Yourself.md) — 60-second script
+- [Why Leaving / Why This Role](./2_Interview_Prep/Why_Leaving.md)
+- [Behavioural Stories (STAR)](./2_Interview_Prep/Behavioural_Stories.md) — 5 stories: Concentrix, ConnectWise, Niyuj, Barclays, Infosys
+- [Leadership & Team Management](./2_Interview_Prep/Leadership_Questions.md)
+- [Complete Interview Q&A](./2_Interview_Prep/Complete_Interview_QA.md) — Full bank of questions + scripted answers
+
+#### 🟠 B — JavaScript Deep Internals
+- 📘 [JavaScript Deep Internals](./2_Interview_Prep/JavaScript_Deep_Internals.md) — **PRIMARY** — Closures, `this` binding, prototypes, async/await, generators, Map/WeakMap, design patterns
+
+#### 🔵 C — React
+- 📘 [React Advanced Internals](./2_Interview_Prep/React_Advanced_Internals.md) — **PRIMARY** — Fiber, memo/useCallback, Redux vs Zustand, compound components, custom hooks
+- 📄 [React Hooks & Performance](./2_Interview_Prep/React_Hooks_Performance.md) — Quick reference / cheat sheet
+
+#### 🟢 D — Node.js & Backend
+- 📘 [Node.js Advanced Internals](./2_Interview_Prep/NodeJS_Advanced_Internals.md) — **PRIMARY** — Streams, worker threads, memory leaks, error handling
+- 📄 [Node.js Event Loop](./2_Interview_Prep/Node_Event_Loop.md) — Loop phases quick reference
+- 📄 [CI/CD Pipeline](./2_Interview_Prep/CI_CD_Pipeline.md)
+
+#### 🟣 E — Databases
+- 📘 [MongoDB Advanced Internals](./2_Interview_Prep/MongoDB_Advanced_Internals.md) — **PRIMARY** — Schema design, aggregation, ESR indexing, transactions
+- 📄 [MySQL at Scale](./2_Interview_Prep/MySQL_At_Scale.md) — Replicas, ProxySQL, indexing, ACID
+
+#### 🔴 F — System Design
+- 📘 [MERN System Design](./2_Interview_Prep/MERN_System_Design.md) — **PRIMARY** — Real-time streaming, JWT vs Sessions, file upload, caching, multi-tenancy
+- 📄 [System Design: GCP Platform](./2_Interview_Prep/System_Design_GCP.md)
+- 📄 [Microservices Patterns](./2_Interview_Prep/Microservices_Patterns.md) — Circuit breakers, API Gateway, Saga
+- 📄 [Kubernetes Internals](./2_Interview_Prep/Kubernetes_Internals.md)
+- 📄 [Advanced Architecture Study Guide](./2_Interview_Prep/Advanced_Software_Architecture_and_Development_Study_Guide.md)
+
+#### 🟤 G — AI / LLM Projects (Your Differentiator)
+- 📄 [AI Gateway Deep Dive](./2_Interview_Prep/AI_Gateway_Deep_Dive.md)
+- 📄 [Agent Builder Deep Dive](./2_Interview_Prep/Agent_Builder_Deep_Dive.md)
+- 📄 [Multi-Agent Orchestration](./2_Interview_Prep/Multi_Agent_Orchestration.md)
+- 📄 [RAG Pipeline Deep Dive](./2_Interview_Prep/RAG_Pipeline_Deep_Dive.md)
+
+#### ⚫ H — Weak Areas Tracker
+- 📄 [Failed Interview Questions](./2_Interview_Prep/Failed_Interview_Questions_Master_Sheet.md) — Review before every interview
 
 ### 🧠 [Section 3: Concepts](./3_Concepts/)
 - [Kafka Deep Dive](./3_Concepts/Kafka_Deep_Dive.md) — Partitions, consumer groups, offsets, DLQs, exactly-once.
