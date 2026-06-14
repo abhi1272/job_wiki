@@ -527,9 +527,309 @@ Async function:   generator + auto-resume on Promise resolve
 
 ---
 
+## 7. Map, Set, WeakMap, WeakSet
+
+### Map vs Object
+| | `Object {}` | `Map` |
+|---|---|---|
+| Key types | strings & symbols only | any type |
+| Order | not guaranteed for int keys | guaranteed insertion order |
+| Size | O(n) via Object.keys() | O(1) via map.size |
+| Performance | fast for small static keys | better for frequent add/delete |
+
+```javascript
+// Object fails with object keys
+const obj = {};
+const key = { id: 1 };
+obj[key] = 'val'; // key becomes '[object Object]' — wrong!
+
+// Map handles object keys correctly
+const map = new Map();
+map.set(key, 'val');
+map.get(key); // 'val' ✅
+```
+
+**O(1) lookup from large dataset — your instinct was right:**
+```javascript
+const users = await db.collection('users').find().toArray();
+// ❌ O(n) on every call
+users.find(u => u._id === id);
+// ✅ Build once, O(1) forever
+const userMap = new Map(users.map(u => [u._id, u]));
+userMap.get(id);
+```
+
+**Request deduplication:**
+```javascript
+const inFlightRequests = new Map();
+
+async function fetchWithDedup(url) {
+  if (inFlightRequests.has(url)) return inFlightRequests.get(url);
+  const promise = fetch(url).then(r => r.json());
+  inFlightRequests.set(url, promise);
+  try { return await promise; } finally { inFlightRequests.delete(url); }
+}
+```
+
+### Set vs Array
+```javascript
+// Deduplication
+const unique = [...new Set([1, 2, 2, 3, 3])]; // [1, 2, 3]
+
+// O(1) membership check — blocked users, feature flags
+const blocked = new Set(['user1', 'user2']);
+blocked.has(req.userId); // O(1) vs array.includes() which is O(n)
+```
+
+### WeakMap — Prevents Memory Leaks
+Keys must be objects. Held weakly — when the key object is GC'd, the entry disappears too. A regular Map would hold the key alive forever.
+
+```javascript
+// ✅ Per-request metadata without leaking memory
+const requestMeta = new WeakMap();
+
+app.use((req, res, next) => {
+  requestMeta.set(req, { startTime: Date.now(), userId: req.headers['x-user-id'] });
+  next();
+});
+// When req is done and GC'd, WeakMap entry disappears automatically
+// Regular Map here = entries accumulate = memory leak
+```
+
+### When to Use Each
+```
+Object   → string keys, JSON serializable, simple config
+Map      → any key type, O(1) size, ordered, frequent mutations
+Set      → unique values, O(1) has(), deduplication, allowlists
+WeakMap  → cache/metadata on objects that must not block GC
+WeakSet  → track processed objects without blocking GC
+```
+
+### Interview Answer
+> "Use Map over objects for non-string keys, guaranteed order, and frequent add/delete — common pattern is building an ID-to-object lookup from DB results for O(1) access. Set for unique values and fast membership checks. WeakMap for metadata on objects that shouldn't prevent garbage collection — per-request caches in Express middleware. A regular Map there accumulates entries indefinitely and leaks memory."
+
+---
+
 ## What's Next
 
 - [ ] Phase 2 — React Advanced (Fiber, Concurrent Mode, patterns)
 - [ ] Phase 3 — Node.js Advanced (Streams, Worker Threads, memory leaks)
 - [ ] Phase 4 — MongoDB Advanced (schema design, aggregation, sharding)
 - [ ] Phase 5 — MERN System Design
+
+---
+
+## 8. Design Patterns in JavaScript (MERN Context)
+
+### Factory — LLM Provider Selection
+Creates objects without exposing creation logic. Caller says *what*, factory decides *how*.
+
+```javascript
+class LLMProviderFactory {
+  static create(providerName, config) {
+    switch (providerName) {
+      case 'anthropic': return new AnthropicProvider(config);
+      case 'openai':    return new OpenAIProvider(config);
+      case 'gemini':    return new GeminiProvider(config);
+      default: throw new Error(`Unknown provider: ${providerName}`);
+    }
+  }
+}
+const provider = LLMProviderFactory.create(req.body.model, config);
+// Add new provider = add one case. Nothing else changes. (Open/Closed Principle)
+```
+
+### Singleton — DB/Redis/Kafka Clients
+One instance shared across the app. Node module caching makes this natural.
+
+```javascript
+// db.js — module-level export IS a singleton (Node caches imports)
+const client = new MongoClient(process.env.MONGO_URI);
+export default client; // same instance everywhere it's imported
+```
+Your Langfuse client, Redis client, Kafka producer — all singletons.
+
+### Observer — Kafka / EventEmitter
+Objects subscribe to events, get notified when they fire. Kafka is the distributed version.
+
+```javascript
+class AgentOrchestrator extends EventEmitter {
+  async runAgent(agentId, input) {
+    this.emit('agent:start', { agentId });
+    const result = await this.executeAgent(agentId, input);
+    this.emit('agent:complete', { agentId, result });
+    return result;
+  }
+}
+
+orchestrator.on('agent:complete', ({ tokens }) => langfuse.track(tokens));
+orchestrator.on('agent:complete', ({ agentId }) => quotaService.deduct(agentId));
+orchestrator.on('agent:complete', ({ agentId }) => websocket.push(agentId, 'done'));
+// Add new behavior = add a listener. Zero changes to orchestrator.
+```
+
+### Saga — Multi-Service Transactions
+Long-running distributed workflows where each step has a compensating rollback action.
+
+```javascript
+class AgentDeploymentSaga {
+  async execute(agentConfig) {
+    const compensations = [];
+    try {
+      const agent = await agentService.create(agentConfig);
+      compensations.push(() => agentService.delete(agent.id));
+
+      await vectorDB.createNamespace(agent.id);
+      compensations.push(() => vectorDB.deleteNamespace(agent.id));
+
+      await k8sService.deployAgent(agent.id);
+      compensations.push(() => k8sService.removeDeployment(agent.id));
+
+      return { success: true, agentId: agent.id };
+    } catch (err) {
+      for (const compensate of compensations.reverse()) {
+        await compensate().catch(e => logger.error('Compensation failed', e));
+      }
+      throw err;
+    }
+  }
+}
+// Why not DB transaction? Steps touch MongoDB, K8s API, Stripe — no shared tx boundary.
+// Saga gives eventual consistency with explicit rollback.
+```
+
+**Two types:**
+- **Orchestration** — central saga controls all steps (your code above). Easier to debug.
+- **Choreography** — services emit/listen to Kafka events in sequence. Your Agent Builder with Kafka.
+
+### Strategy — LLM Routing Rules
+Interchangeable algorithms injected at runtime.
+
+```javascript
+class CostOptimizedStrategy {
+  selectProvider(req) { return req.complexity < 0.5 ? 'haiku' : 'sonnet'; }
+}
+class LatencyOptimizedStrategy {
+  selectProvider(req) { return 'gpt-4o-mini'; }
+}
+class ComplianceStrategy {
+  selectProvider(req) { return req.orgCountry === 'EU' ? 'anthropic-eu' : 'claude-3'; }
+}
+
+const router = new TokenRouter(
+  team.priority === 'cost' ? new CostOptimizedStrategy() : new LatencyOptimizedStrategy()
+);
+```
+
+### Decorator — NestJS Guards, Interceptors, Audit Logs
+Adds behavior without modifying the original class.
+
+```javascript
+function AuditLog(target, methodName, descriptor) {
+  const original = descriptor.value;
+  descriptor.value = async function(...args) {
+    const start = Date.now();
+    try {
+      const result = await original.apply(this, args);
+      logger.info(`${methodName} ok`, { ms: Date.now() - start });
+      return result;
+    } catch (err) {
+      logger.error(`${methodName} failed`, { err }); throw err;
+    }
+  };
+  return descriptor;
+}
+
+class AgentService {
+  @AuditLog
+  async deployAgent(config) { ... } // logging added without touching this method
+}
+```
+
+### Pattern → Your Project Map
+| Pattern | Where you used it |
+|---|---|
+| Factory | LLM provider selection in AI Gateway |
+| Singleton | Langfuse, Redis, Kafka producer at startup |
+| Observer | Kafka events between Agent Builder services |
+| Saga | Agent deployment across MongoDB + K8s + Billing |
+| Strategy | LLM routing rules per team (cost/latency/compliance) |
+| Decorator | NestJS guards, interceptors, audit logging |
+
+### Interview Answer
+> "In the AI Gateway I used Factory for LLM provider instantiation — adding a provider is one line, nothing else changes. Singleton for shared clients — Node module caching makes this natural. Strategy for routing rules injected per team at runtime. In the Agent Builder, Observer via Kafka — orchestrator emits, billing/observability/k8s react independently. For multi-step deployments across systems without a shared transaction boundary, I used Saga with compensating actions for rollback."
+
+---
+
+## 9. Design Patterns — Functional Style (no classes needed)
+
+In modern Node.js you rarely need classes. Every pattern works with plain functions.
+
+### Factory → function returning an object
+```javascript
+function createLLMProvider(name, config) {
+  const providers = {
+    anthropic: (cfg) => ({ complete: (p) => callAnthropic(p, cfg) }),
+    openai:    (cfg) => ({ complete: (p) => callOpenAI(p, cfg) }),
+    gemini:    (cfg) => ({ complete: (p) => callGemini(p, cfg) }),
+  };
+  if (!providers[name]) throw new Error(`Unknown provider: ${name}`);
+  return providers[name](config);
+}
+```
+
+### Singleton → module export (Node caches it)
+```javascript
+// db.js
+const client = new MongoClient(uri);
+export default client; // same instance everywhere — simplest singleton
+```
+
+### Observer → closure-based event bus
+```javascript
+function createEventBus() {
+  const listeners = {};
+  return {
+    on(event, fn)   { (listeners[event] ??= []).push(fn); },
+    off(event, fn)  { listeners[event] = (listeners[event] || []).filter(l => l !== fn); },
+    emit(event, data) { (listeners[event] || []).forEach(fn => fn(data)); }
+  };
+}
+// listeners is private — only accessible via on/off/emit
+```
+
+### Strategy → functions are already first-class
+```javascript
+const costStrategy     = (req) => req.complexity < 0.5 ? 'haiku' : 'sonnet';
+const latencyStrategy  = (req) => 'gpt-4o-mini';
+
+function routeRequest(req, strategy) { return strategy(req); }
+
+const strategy = team.priority === 'cost' ? costStrategy : latencyStrategy;
+routeRequest(req, strategy); // swap at runtime, no classes needed
+```
+
+### Decorator → Higher Order Function (HOF)
+```javascript
+function withAuditLog(fn, name) {
+  return async function(...args) {
+    const start = Date.now();
+    try {
+      const result = await fn(...args);
+      logger.info(`${name} ok`, { ms: Date.now() - start });
+      return result;
+    } catch (err) {
+      logger.error(`${name} failed`, { err }); throw err;
+    }
+  };
+}
+
+const deployAgent = withAuditLog(async (config) => { /* logic */ }, 'deployAgent');
+// Express middleware is exactly this pattern
+```
+
+### When class vs function
+```
+Use CLASS  → NestJS (DI requires it), inheritance needed, multiple stateful instances
+Use FUNCTION → Node.js services, utilities, closures for private state, simpler testing
+```
