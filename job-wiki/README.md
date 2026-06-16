@@ -16,6 +16,10 @@ Welcome to your offline personal knowledge base. This wiki acts as the single so
 
 > 🗂️ **[MERN Interview Master Index](./2_Interview_Prep/MERN_Interview_Master_Index.md)** — Start here. All topics categorized with quick study plans by interview type.
 
+#### 🟡 I — Platform Engineering (ConnectWise UI Principal Role)
+- 📘 [Microfrontend Architecture](./2_Interview_Prep/Microfrontend_Architecture.md) — **PRIMARY** — Module Federation, cross-MFE comms, auth, manifest pattern, shell design, dynamic loading, React platform patterns
+- 📘 [Platform & Design System](./2_Interview_Prep/Platform_Design_System.md) — **PRIMARY** — Monorepo/Nx, design tokens, theming, versioning, codemods, Storybook, DX, governance
+
 #### 🟡 A — Behavioural & Soft Skills
 - [Tell Me About Yourself](./2_Interview_Prep/Tell_Me_About_Yourself.md) — 60-second script
 - [Why Leaving / Why This Role](./2_Interview_Prep/Why_Leaving.md)

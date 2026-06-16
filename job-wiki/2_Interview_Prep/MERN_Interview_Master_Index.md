@@ -27,6 +27,16 @@
 
 ---
 
+## 🟡 I — Platform Engineering (ConnectWise Role)
+*Study this for the UI Principal Engineer interview — platform/microfrontend focus*
+
+| Topic | File | Sections |
+|---|---|---|
+| **PRIMARY — Microfrontend Architecture** | 📘 [Microfrontend_Architecture.md](./Microfrontend_Architecture.md) | 4 integration strategies, Module Federation deep dive, cross-MFE comms, auth, version skew, manifest pattern, shell architecture, dynamic remote loading, React patterns (lazy, context splitting, portals, feature flags) |
+| **PRIMARY — Platform & Design System** | 📘 [Platform_Design_System.md](./Platform_Design_System.md) | Platform team role, monorepo vs polyrepo (Nx), design tokens, theming, versioning + deprecation cycle, codemods, Storybook + Chromatic, DX, governance model |
+
+---
+
 ## 🔵 C — React
 *Study this for any full-stack or frontend-heavy role*
 
