@@ -16,6 +16,9 @@ Welcome to your offline personal knowledge base. This wiki acts as the single so
 
 > 🗂️ **[MERN Interview Master Index](./2_Interview_Prep/MERN_Interview_Master_Index.md)** — Start here. All topics categorized with quick study plans by interview type.
 
+#### 🔴 J — Barclays Cloud Platform Engineer (Tomorrow's Interview)
+- 📘 [Cloud_Platform_Engineer_Barclays.md](./2_Interview_Prep/Cloud_Platform_Engineer_Barclays.md) — **PRIMARY** — Project narratives reframed, K8s deep dive, AWS bridging (GCP→AWS map), Terraform, CI/CD, LoRA/QLoRA, OpenShift gap answer, Why Barclays
+
 #### 🟡 I — Platform Engineering (ConnectWise UI Principal Role)
 - 📘 [Microfrontend Architecture](./2_Interview_Prep/Microfrontend_Architecture.md) — **PRIMARY** — Module Federation, cross-MFE comms, auth, manifest pattern, shell design, dynamic loading, React platform patterns
 - 📘 [Platform & Design System](./2_Interview_Prep/Platform_Design_System.md) — **PRIMARY** — Monorepo/Nx, design tokens, theming, versioning, codemods, Storybook, DX, governance
