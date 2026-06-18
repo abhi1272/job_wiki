@@ -795,3 +795,333 @@ setUser(prev => ({ ...prev, name: 'Abhishek' })); // ✅ keeps other fields
 
 **Interview answer:**
 > "Use the functional form `setState(prev => ...)` whenever the new state depends on the old value — especially in event handlers, timeouts, and intervals where the closure captures stale state. Multiple updates in one handler need functional form to queue correctly. Lazy initialization: passing a function to `useState(fn)` instead of a value means the initializer runs only once on mount — important for expensive operations like parsing localStorage or computing from large datasets."
+
+---
+
+## 7. Class Lifecycle → Hooks Mapping
+
+```
+constructor           → useState (initial state)
+componentDidMount     → useEffect(() => {}, [])
+componentDidUpdate    → useEffect(() => {}, [deps])
+componentWillUnmount  → useEffect(() => { return () => cleanup }, [])
+shouldComponentUpdate → React.memo + useMemo + useCallback
+getDerivedStateFromError → no hook — must use class for Error Boundary
+componentDidCatch     → no hook — must use class for Error Boundary
+```
+
+---
+
+## 8. All React Hooks Reference
+
+```
+BASIC
+useState          → local state
+useEffect         → side effects, lifecycle
+useContext        → consume context
+
+PERFORMANCE
+useMemo           → memoize computed value
+useCallback       → memoize function reference
+memo              → skip re-render if props unchanged
+
+REFS
+useRef            → DOM reference or mutable value (no re-render)
+useImperativeHandle → expose ref methods to parent (with forwardRef)
+
+ADVANCED
+useReducer        → complex state (multiple related fields)
+useLayoutEffect   → like useEffect but fires before browser paint
+useId             → generate unique IDs (React 18)
+
+REACT 18
+useTransition     → mark update as non-urgent
+useDeferredValue  → defer a value update
+useSyncExternalStore → subscribe to external stores safely
+```
+
+---
+
+## 9. React 18 — Concurrent Features
+
+### useTransition — mark update as non-urgent
+
+```jsx
+const [isPending, startTransition] = useTransition();
+
+const handleSearch = (e) => {
+  setInputValue(e.target.value);        // urgent — update input immediately
+
+  startTransition(() => {
+    setSearchResults(filterData(value)); // non-urgent — can be interrupted
+  });
+};
+
+return (
+  <>
+    <input value={inputValue} onChange={handleSearch} />
+    {isPending && <Spinner />}
+    <Results data={searchResults} />
+  </>
+);
+```
+
+### useDeferredValue — defer a derived value
+
+```jsx
+const [search, setSearch] = useState('');
+const deferredSearch = useDeferredValue(search);
+
+// search updates immediately (input responsive)
+// deferredSearch updates when React has time
+const results = useMemo(() => filterData(deferredSearch), [deferredSearch]);
+```
+
+### Difference
+
+```
+useTransition    → you control what's deferred (wrap the setter)
+useDeferredValue → defer a value you don't control
+```
+
+### Automatic batching
+
+```javascript
+// React 17 — two re-renders inside setTimeout
+setTimeout(() => {
+  setCount(1);   // re-render
+  setName('A');  // re-render
+});
+
+// React 18 — one re-render (batched automatically everywhere)
+setTimeout(() => {
+  setCount(1);
+  setName('A');  // → one re-render
+});
+```
+
+**Interview one-liner:**
+> "React 18 makes rendering interruptible. useTransition wraps non-urgent updates so user input is never blocked. useDeferredValue defers a value when you don't control the setter. Automatic batching reduces re-renders outside event handlers too."
+
+---
+
+## 10. Error Boundaries
+
+```jsx
+class ErrorBoundary extends React.Component {
+  state = { hasError: false };
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, info) {
+    logToSentry(error, info.componentStack);  // log to observability
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div>
+          Something went wrong.
+          <button onClick={() => this.setState({ hasError: false })}>
+            Retry
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// usage — wrap at feature level, not top level
+<ErrorBoundary>
+  <AgentWidget />
+</ErrorBoundary>
+```
+
+**Three things to know:**
+```
+1. Must be class component — no hook equivalent
+   react-error-boundary library gives hook-friendly wrapper
+
+2. Does NOT catch:
+   → async errors (setTimeout, fetch)
+   → event handlers
+   → only catches render/lifecycle errors
+
+3. Wrap at feature level — one broken feature shouldn't crash entire app
+```
+
+**Your project answer:**
+> "We wrapped each agent widget in an ErrorBoundary — if one agent's UI crashed it showed a retry button without affecting other agents. Errors logged to our observability stack via componentDidCatch."
+
+---
+
+## 11. Performance — Initial Load
+
+```
+Diagnose:
+  Chrome Network tab    → bundle size
+  Chrome Coverage tab   → unused JS
+  React DevTools Profiler → slow components
+
+Fixes in order of impact:
+
+1. Code splitting + lazy loading
+   const Page = lazy(() => import('./Page'))
+   → each route loads its own chunk
+   → home page doesn't load dashboard code
+
+2. Suspense — show skeleton not blank screen
+   <Suspense fallback={<Skeleton />}>
+     <LazyComponent />
+   </Suspense>
+
+3. Bundle analysis
+   webpack-bundle-analyzer → find large deps → replace or tree-shake
+
+4. useTransition — keep UI responsive during heavy renders
+
+5. useDeferredValue — defer slow search/filter
+
+6. SSR (Next.js) — real fix for blank screen
+   server sends HTML → user sees content before JS loads
+```
+
+---
+
+## 12. Custom Hooks — Interview Ready
+
+### useDebounce
+
+```javascript
+const useDebounce = (value, delay) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);  // cleanup cancels previous timer
+  }, [value, delay]);
+
+  return debouncedValue;
+};
+```
+
+### useFetch
+
+```javascript
+const useFetch = (url) => {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const resp = await axios.get(url, { signal: controller.signal });
+        setData(resp.data);
+      } catch (err) {
+        if (err.name === 'CanceledError') return;
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+    return () => controller.abort();
+  }, [url]);
+
+  return { data, error, loading };
+};
+```
+
+### useLocalStorage
+
+```javascript
+const useLocalStorage = (key, initialValue) => {
+  const [value, setValue] = useState(() => {
+    const stored = localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : initialValue;
+  });
+
+  const setStoredValue = (newValue) => {
+    setValue(newValue);
+    localStorage.setItem(key, JSON.stringify(newValue));
+  };
+
+  return [value, setStoredValue];
+};
+```
+
+### useIntersectionObserver
+
+```javascript
+const useIntersectionObserver = (ref) => {
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => {
+      setIsVisible(entry.isIntersecting);
+    });
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [ref]);
+
+  return isVisible;
+};
+```
+
+---
+
+## 13. Large List Performance — Virtualization
+
+```jsx
+import { FixedSizeList } from 'react-window';
+
+function VirtualList({ items }) {
+  const Row = ({ index, style }) => (
+    <div style={style}>{items[index].name}</div>
+  );
+
+  return (
+    <FixedSizeList height={600} itemCount={items.length} itemSize={50} width="100%">
+      {Row}
+    </FixedSizeList>
+  );
+}
+// renders only ~12 visible rows regardless of list size
+```
+
+```
+react-window   → fixed/variable size rows, lightweight
+react-virtuoso → dynamic heights, easiest API
+```
+
+---
+
+## 14. State Architecture — Multi-team (Principal Level)
+
+```
+Shell owns global state:
+  Auth / User     → Context, MFEs read only
+  Notifications   → shell owns UI, MFEs fire events
+  Theme           → CSS variables, no JS state needed
+  Feature flags   → shell fetches, exposes via Context
+
+MFEs own local state:
+  Never import shell's store directly (tight coupling)
+  Communicate via custom events or window.__shell__ API
+
+window.__shell__ = {
+  getUser: () => store.getState().user,
+  notify: (msg) => store.dispatch(showNotification(msg))
+}
+```
+
+**Interview answer:**
+> "Shell owns global state — auth, notifications, theme. MFEs consume via exposed APIs, never import shell's store. Theme is CSS variables so MFEs don't need JS state at all. Each MFE owns its own local state and is independently deployable."
